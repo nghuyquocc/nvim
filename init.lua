@@ -15,10 +15,10 @@ vo.hidden         = true
 
 -- UI cleanup
 vo.signcolumn     = "yes"
-vo.colorcolumn    = ""                      
-vo.showmode       = true                   
-vo.showtabline    = 2                      
-vo.laststatus     = 0
+vo.colorcolumn    = ""         -- no vertical ruler
+vo.showmode       = true       -- show -- INSERT --
+vo.showtabline    = 2          -- show tabs at top
+vo.laststatus     = 0          -- minimal: no bottom statusline
 
 -- misc
 vo.mouse          = "a"
@@ -27,10 +27,11 @@ vo.tabstop        = 4
 vo.shiftwidth     = 4
 vo.scrolloff      = 8
 vo.updatetime     = 300
-vo.timeoutlen     = 400
+vo.timeoutlen     = 300
 
-vim.g.mapleader  = " "
+vim.g.mapleader   = " "
 
+-- ========= lazy.nvim bootstrap =========
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system({ "git", "clone", "--filter=blob:none",
@@ -40,6 +41,7 @@ vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
 
+  -- Kanagawa (transparent + scrub side colors)
   {
     "rebelot/kanagawa.nvim",
     lazy = false,
@@ -86,7 +88,7 @@ require("lazy").setup({
     end,
   },
 
-  -- Top tabs with close button (filename-as-tab look)
+  -- Top tabs with close button
   {
     "akinsho/bufferline.nvim",
     version = "*",
@@ -94,13 +96,15 @@ require("lazy").setup({
     opts = {
       options = {
         always_show_bufferline  = true,
-        show_buffer_close_icons = true,    -- clickable ×
-        show_close_icon         = false,   -- no global close button
-        separator_style         = "thin",  -- try "slant" if you prefer
+        show_buffer_close_icons = true,   -- show × on each tab
+        show_close_icon         = false,  -- no global close
+        separator_style         = "thin",
         diagnostics             = "nvim_lsp",
-        close_command           = function(n) vim.cmd("bdelete " .. n) end,
-        right_mouse_command     = "bdelete %d",
-        middle_mouse_command    = "bdelete %d",
+
+        -- ✅ Use templates so bufferline injects the buffer number
+        close_command           = "bdelete! %d",
+        right_mouse_command     = "bdelete! %d",
+        middle_mouse_command    = "bdelete! %d",
       },
     },
     config = function(_, opts) require("bufferline").setup(opts) end,
@@ -115,7 +119,7 @@ require("lazy").setup({
     end,
   },
 
-  -- Icons (used by bufferline/telescope)
+  -- Icons
   { "nvim-tree/nvim-web-devicons", lazy = true },
 
   -- Git signs
@@ -147,7 +151,7 @@ require("lazy").setup({
     end,
   },
 
-  -- Autocompletion (cmp + snippets)
+  -- CMP + snippets
   {
     "hrsh7th/nvim-cmp",
     dependencies = {
@@ -187,7 +191,7 @@ require("lazy").setup({
     end,
   },
 
-  -- LSP using Neovim 0.11 API (no deprecation warnings, no setup_handlers)
+  -- LSP (Neovim 0.11 API)
   {
     "neovim/nvim-lspconfig",
     dependencies = { "williamboman/mason.nvim", "williamboman/mason-lspconfig.nvim" },
@@ -197,19 +201,18 @@ require("lazy").setup({
       local mlsp = require("mason-lspconfig")
       local servers = { "clangd", "pyright" }
 
-      -- Ensure these are installed (non-blocking)
       mlsp.setup({ ensure_installed = servers, automatic_installation = true })
 
-      -- Enable what we have (works across versions of mason-lspconfig)
       local ok, installed = pcall(mlsp.get_installed_servers)
       if not ok or #installed == 0 then installed = servers end
 
       for _, server in ipairs(installed) do
         vim.lsp.enable(server, {
+          -- add on_attach/capabilities/settings here if needed
         })
       end
 
-      -- Handy LSP keymaps
+      -- LSP keymaps
       local map = vim.keymap.set
       local km  = { noremap = true, silent = true }
       map("n", "gd", vim.lsp.buf.definition, km)
@@ -222,15 +225,13 @@ require("lazy").setup({
 
 })
 
--- ---------- Keymaps ----------
+-- ========= keymaps =========
 local map  = vim.keymap.set
 local base = { noremap = true, silent = true }
 local function nmap(lhs, rhs, desc) map("n", lhs, rhs, vim.tbl_extend("force", base, { desc = desc })) end
 
--- Buffers / tabs
-nmap("<leader>c", ":bdelete<CR>", "Close buffer")
-nmap("<S-l>",     ":bnext<CR>",   "Next buffer")
-nmap("<S-h>",     ":bprevious<CR>","Prev buffer")
+-- Quick close “tab”
+nmap("<leader>c", ":bdelete!<CR>", "Close tab (buffer)")
 
 -- Files / windows
 nmap("<leader>w", ":w<CR>",   "Save file")
@@ -259,5 +260,14 @@ vim.api.nvim_create_autocmd("TermOpen", {
   callback = function()
     local topts = { noremap = true, silent = true, buffer = true, desc = "Close floating terminal" }
     vim.keymap.set("t", "<leader>q", "<C-\\><C-n>:FloatermHide<CR>", topts)
+  end,
+})
+
+-- Allow closing the last tab cleanly: when the final buffer closes, open a blank one
+vim.api.nvim_create_autocmd("BufDelete", {
+  callback = function()
+    if vim.fn.bufnr("$") == 1 then
+      vim.cmd("enew")
+    end
   end,
 })

@@ -31,7 +31,6 @@ vo.timeoutlen     = 400
 
 vim.g.mapleader  = " "
 
--- ---------- lazy.nvim ----------
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system({ "git", "clone", "--filter=blob:none",
@@ -41,7 +40,6 @@ vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
 
-  -- Theme: Kanagawa (transparent, no stray side colors)
   {
     "rebelot/kanagawa.nvim",
     lazy = false,
@@ -208,7 +206,6 @@ require("lazy").setup({
 
       for _, server in ipairs(installed) do
         vim.lsp.enable(server, {
-          -- add shared on_attach/capabilities/settings here if you need them later
         })
       end
 
